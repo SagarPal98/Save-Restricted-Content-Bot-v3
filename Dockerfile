@@ -21,4 +21,4 @@ COPY . .
 EXPOSE 5000
 
 # Start the app directly (only one entry point)
-CMD ["python3", "main.py"]
+CMD ["python3", "app.py"]
