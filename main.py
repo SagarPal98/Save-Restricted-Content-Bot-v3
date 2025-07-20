@@ -1,12 +1,19 @@
-# Copyright (c) 2025 devgagan : https://github.com/devgaganin.  
-# Licensed under the GNU General Public License v3.0.  
-# See LICENSE file in the repository root for full license text.
-
+import os
 import asyncio
+import threading
+from flask import Flask, render_template
 from shared_client import start_client
 import importlib
-import os
-import sys
+
+app = Flask(__name__)
+
+@app.route("/")
+def welcome():
+    return render_template("welcome.html")
+
+@app.route("/health")
+def health():
+    return "OK", 200
 
 async def load_and_run_plugins():
     await start_client()
@@ -17,25 +24,18 @@ async def load_and_run_plugins():
         module = importlib.import_module(f"plugins.{plugin}")
         if hasattr(module, f"run_{plugin}_plugin"):
             print(f"Running {plugin} plugin...")
-            await getattr(module, f"run_{plugin}_plugin")()  
+            await getattr(module, f"run_{plugin}_plugin")()
 
-async def main():
-    await load_and_run_plugins()
     while True:
-        await asyncio.sleep(1)  
+        await asyncio.sleep(1)
+
+def run_plugins_async():
+    asyncio.run(load_and_run_plugins())
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    print("Starting clients ...")
-    try:
-        loop.run_until_complete(main())
-    except KeyboardInterrupt:
-        print("Shutting down...")
-    except Exception as e:
-        print(e)
-        sys.exit(1)
-    finally:
-        try:
-            loop.close()
-        except Exception:
-            pass
+    # Start the plugin system in the background
+    plugin_thread = threading.Thread(target=run_plugins_async, daemon=True)
+    plugin_thread.start()
+
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
