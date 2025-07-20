@@ -15,14 +15,13 @@ def welcome():
 def health():
     return "OK", 200
 
-# -------- Plugin System (from main.py) --------
 async def load_and_run_plugins():
-    print("Starting shared client...")
+    print("Starting shared client...", flush=True)
     await start_client()
 
     plugin_dir = "plugins"
     if not os.path.exists(plugin_dir):
-        print("Plugin directory not found.")
+        print("Plugin directory not found.", flush=True)
         return
 
     plugins = [f[:-3] for f in os.listdir(plugin_dir) if f.endswith(".py") and f != "__init__.py"]
@@ -31,23 +30,23 @@ async def load_and_run_plugins():
         try:
             module = importlib.import_module(f"plugins.{plugin}")
             if hasattr(module, f"run_{plugin}_plugin"):
-                print(f"Running {plugin} plugin...")
+                print(f"Running {plugin} plugin...", flush=True)
                 await getattr(module, f"run_{plugin}_plugin")()
         except Exception as e:
-            print(f"Error loading plugin '{plugin}': {e}")
+            print(f"Error loading plugin '{plugin}': {e}", flush=True)
 
     while True:
         await asyncio.sleep(1)
 
-def run_plugins_async():
-    asyncio.run(load_and_run_plugins())
-
-# -------- Start Flask + Bot Together --------
-if __name__ == "__main__":
-    # Start plugin system in a background thread
-    plugin_thread = threading.Thread(target=run_plugins_async, daemon=True)
-    plugin_thread.start()
-
-    # Start Flask web server
+def run_flask():
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
+if __name__ == "__main__":
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
+
+    try:
+        asyncio.run(load_and_run_plugins())
+    except Exception as e:
+        print(f"Bot crashed: {e}", flush=True)
