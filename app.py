@@ -1,52 +1,29 @@
-import os
+from aiogram import Bot, Dispatcher, types
 import asyncio
-import threading
-import importlib
-from flask import Flask, render_template
-from shared_client import start_client
+import os
 
-app = Flask(__name__)
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+bot = Bot(token=TOKEN)
+dp = Dispatcher(bot)
 
-@app.route("/")
-def welcome():
-    return render_template("welcome.html")
+@dp.message_handler(commands=['start'])
+async def send_welcome(message: types.Message):
+    await message.reply("Hello! Bot is working.")
 
-@app.route("/health")
-def health():
-    return "OK", 200
-
-async def load_and_run_plugins():
-    print("Starting shared client...", flush=True)
-    await start_client()
-
-    plugin_dir = "plugins"
-    if not os.path.exists(plugin_dir):
-        print("Plugin directory not found.", flush=True)
-        return
-
-    plugins = [f[:-3] for f in os.listdir(plugin_dir) if f.endswith(".py") and f != "__init__.py"]
-
-    for plugin in plugins:
-        try:
-            module = importlib.import_module(f"plugins.{plugin}")
-            if hasattr(module, f"run_{plugin}_plugin"):
-                print(f"Running {plugin} plugin...", flush=True)
-                await getattr(module, f"run_{plugin}_plugin")()
-        except Exception as e:
-            print(f"Error loading plugin '{plugin}': {e}", flush=True)
-
-    while True:
-        await asyncio.sleep(1)
-
-def run_flask():
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+async def start_bot():
+    print("Starting test bot...", flush=True)
+    await dp.start_polling()
 
 if __name__ == "__main__":
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.start()
+    import threading
+    from flask import Flask
+    
+    app = Flask(__name__)
 
-    try:
-        asyncio.run(load_and_run_plugins())
-    except Exception as e:
-        print(f"Bot crashed: {e}", flush=True)
+    @app.route("/")
+    def welcome():
+        return "Hello Flask"
+
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))).start()
+
+    asyncio.run(start_bot())
